@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>421 MASTER - V1.0.3</title>
+    <title>421 MASTER - V1.0.4</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
@@ -120,7 +120,7 @@
 <body>
 
     <div id="update-banner">Mise à jour en cours... Veuillez patienter 🎲</div>
-    <div id="version-tag">VER 1.0.3</div>
+    <div id="version-tag">VER 1.0.4</div>
     
     <h2 id="title-main" style="color:var(--gold); letter-spacing: 2px; text-shadow: 2px 2px #000; margin-bottom: 15px;">🎲 421 MASTER</h2>
 
@@ -329,17 +329,42 @@
     function handleRollResult() {
         if(game.phase === "TIRAGE") {
             game.players[game.activeP].tirage = game.dice[0]; 
-            const tVal = game.dice[0];
             game.dice = [0,0,0]; 
+            
             if(game.players[0].tirage > 0 && game.players[1].tirage > 0) {
-                isPaused = true; const msg = `${game.players[0].name}: ${game.players[0].tirage} vs ${game.players[1].name}: ${game.players[1].tirage}`;
-                game.verdictText = msg; updateUI(); showOverlay(msg, 3000);
+                isPaused = true; 
+                const duelMsg = `${game.players[0].name}: ${game.players[0].tirage} vs ${game.players[1].name}: ${game.players[1].tirage}`;
+                game.verdictText = duelMsg;
+                showOverlay(duelMsg, 2000);
+                sendData({type:'OVERLAY', msg: duelMsg, duration: 2000});
+                updateUI();
+
                 setTimeout(() => {
-                    if(game.players[0].tirage === game.players[1].tirage) { game.players[0].tirage = 0; game.players[1].tirage = 0; game.verdictText = "ÉGALITÉ !"; showOverlay("ÉGALITÉ !", 2000); }
-                    else { game.activeP = (game.players[0].tirage < game.players[1].tirage) ? 0 : 1; game.phase = "CHARGE"; game.verdictText = `${game.players[game.activeP].name} JOUE !`; showOverlay(`${game.players[game.activeP].name} JOUE !`, 2500); }
-                    isPaused = false; finishTurn();
-                }, 3000);
-            } else { game.activeP = (game.activeP === 0) ? 1 : 0; finishTurn(); }
+                    if(game.players[0].tirage === game.players[1].tirage) {
+                        game.players[0].tirage = 0; game.players[1].tirage = 0;
+                        game.verdictText = "ÉGALITÉ !";
+                        showOverlay("ÉGALITÉ !", 2000);
+                        sendData({type:'OVERLAY', msg: "ÉGALITÉ !", duration: 2000});
+                        isPaused = false;
+                        finishTurn();
+                    } else {
+                        game.activeP = (game.players[0].tirage < game.players[1].tirage) ? 0 : 1;
+                        game.phase = "CHARGE";
+                        const startMsg = `${game.players[game.activeP].name} COMMENCE !`;
+                        game.verdictText = startMsg;
+                        showOverlay(startMsg, 2000);
+                        sendData({type:'OVERLAY', msg: startMsg, duration: 2000});
+                        
+                        setTimeout(() => {
+                            isPaused = false;
+                            finishTurn();
+                        }, 2000);
+                    }
+                }, 2000);
+            } else { 
+                game.activeP = (game.activeP === 0) ? 1 : 0; 
+                finishTurn(); 
+            }
         } else { 
             const sorted = [...game.dice].sort((a,b)=>b-a);
             const s = sorted.join('');
