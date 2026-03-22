@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>421 MASTER - V1.1.0</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        :root { 
+            --bg: #0b0b0b; --panel: #1a1a1a; --accent: #e67e22; 
+            --gold: #ffca28; --wood: #4e342e; --win: #2ecc71; 
+            --loss: #e74c3c; --rembet: #9b59b6; --led-off: #333;
+        }
+        
+        html, body { 
+            overscroll-behavior-y: contain; position: fixed; overflow: hidden; 
+            width: 100%; height: 100%; -webkit-tap-highlight-color: transparent; 
+            touch-action: none; user-select: none; background: var(--bg);
+            color: #eee; font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+        }
+
+        #version-tag { position: fixed; bottom: 5px; right: 10px; font-size: 0.6em; color: #444; z-index: 1000; }
+
+        /* FLASH ANIMATIONS */
+        .nenette-flash { animation: flash-red 0.6s ease-out; }
+        @keyframes flash-red { 0% { background: var(--bg); } 50% { background: #600; } 100% { background: var(--bg); } }
+        .gold-flash { animation: flash-gold 0.8s ease-out; }
+        @keyframes flash-gold { 0% { background: var(--bg); } 50% { background: #aa8800; } 100% { background: var(--bg); } }
+        
+        #start-menu { background: var(--panel); padding: 25px; border-radius: 20px; border: 4px solid var(--wood); text-align: center; width: 85%; max-width: 400px; z-index: 100; }
+        input { padding: 12px; border-radius: 10px; border: 1px solid #444; background: #222; color: white; width: 85%; margin: 8px 0; text-align: center; font-size: 1.1em; }
+
+        .game-container { display: none; flex-direction: column; background: var(--panel); width: 100%; height: 100vh; max-width: 600px; overflow: hidden; }
+
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 45px; padding: 10px; }
+        .dash-item { background: #111; border: 1px solid #333; border-radius: 12px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; }
+        .dash-label { font-size: 0.65em; color: #888; text-transform: uppercase; }
+        .dash-val { font-size: 1.2em; font-weight: 900; }
+
+        .p-area { display: flex; justify-content: space-around; gap: 8px; padding: 0 10px; }
+        .p-box { flex: 1; padding: 12px 5px; border-radius: 15px; border: 2px solid #333; background: #1a1a1a; min-height: 120px; display: flex; flex-direction: column; align-items: center; transition: 0.3s; }
+        .active { border-color: var(--win); background: #142814; }
+        
+        .p-chips { font-size: 2.2em; color: var(--gold); font-weight: 900; }
+        .combo-text { font-size: 1.2em; color: #fff; font-weight: 800; height: 1.4em; margin-bottom: 5px; text-shadow: 0 0 10px rgba(255,255,255,0.3); text-align: center;}
+
+        #verdict-line { height: 35px; line-height: 35px; text-align: center; font-weight: bold; color: var(--gold); background: rgba(0,0,0,0.3); margin: 5px 10px; border-radius: 5px; font-size: 0.9em;}
+
+        canvas { background: radial-gradient(circle, #2d5a27 0%, #132b12 100%); border-top: 3px solid var(--wood); border-bottom: 3px solid var(--wood); width: 100%; height: 200px; }
+        
+        .btn-group { display: flex; justify-content: center; gap: 12px; padding: 10px 15px 30px 15px; }
+        button { padding: 18px; font-size: 1.2em; cursor: pointer; background: var(--accent); border: none; color: white; border-radius: 15px; font-weight: bold; box-shadow: 0 5px 0 #a04a00; flex: 1; }
+        button:active { transform: translateY(3px); box-shadow: 0 2px 0 #a04a00; }
+        button:disabled { opacity: 0.1; }
+
+        #round-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.95); border: 3px solid var(--gold); color: var(--gold); padding: 25px; border-radius: 15px; font-size: 1.8em; font-weight: bold; display: none; z-index: 600; text-align: center; width: 80%; pointer-events: none; }
+        
+        .mini-die { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; width: 16px; height: 16px; background: white; border-radius: 2px; padding: 2px; margin: 0 2px; }
+        .mini-die .dot { background: #111; border-radius: 50%; width: 100%; height: 100%; }
+        .mini-dice-container { display: flex; justify-content: center; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+
+    <div id="version-tag">VER 1.1.0 - REGLES PERSO</div>
+    
+    <div id="start-menu">
+        <h2 style="color:var(--gold)">🎲 421 MASTER</h2>
+        <input type="text" id="player-name" placeholder="Ton Pseudo" maxlength="10">
+        <button onclick="startApp('host')" style="background:var(--rembet); box-shadow:0 4px 0 #6c3483; width:100%; margin-bottom:12px;">CRÉER SALON</button>
+        <input type="text" id="join-id" placeholder="Code Adversaire">
+        <button onclick="startApp('join')" style="background:var(--win); box-shadow:0 4px 0 #1e8449; width:100%">REJOINDRE</button>
+    </div>
+
+    <div class="game-container" id="game-ui">
+        <div id="online-waiting" style="position:absolute; top:10px; left:10px; font-size:0.7em; color:#888;">CODE: <b id="my-code" style="color:var(--gold)">...</b></div>
+        <div id="round-overlay"></div>
+        
+        <div class="dashboard">
+            <div class="dash-item"><span class="dash-label">Phase</span><span id="phase-label" class="dash-val">TIRAGE</span></div>
+            <div class="dash-item" style="border-color:var(--gold)"><span class="dash-label">Pot</span><span id="pot" class="dash-val">21</span></div>
+            <div class="dash-item"><span class="dash-label">Coups</span><div style="display:flex;gap:4px;margin-top:4px;"><div id="led1" class="led" style="width:10px;height:10px;border-radius:50%;background:#333;"></div><div id="led2" class="led" style="width:10px;height:10px;border-radius:50%;background:#333;"></div><div id="led3" class="led" style="width:10px;height:10px;border-radius:50%;background:#333;"></div></div></div>
+        </div>
+
+        <div class="p-area">
+            <div id="p0-ui" class="p-box"><div id="info-p0" class="combo-text"></div><div id="dice-p0" class="mini-dice-container"></div><div id="p0-label" style="font-size:0.7em;color:#888">Hôte</div><div class="p-chips" id="p0-chips">0</div></div>
+            <div id="p1-ui" class="p-box"><div id="info-p1" class="combo-text"></div><div id="dice-p1" class="mini-dice-container"></div><div id="p1-label" style="font-size:0.7em;color:#888">Invité</div><div class="p-chips" id="p1-chips">0</div></div>
+        </div>
+
+        <div id="verdict-line">PRÊT</div>
+        <canvas id="gameCanvas" width="500" height="200"></canvas>
+
+        <div class="btn-group">
+            <button id="rollBtn">LANCER</button>
+            <button id="stopBtn">STOP</button>
+        </div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d'), overlay = document.getElementById('round-overlay'), vLine = document.getElementById('verdict-line');
+    let peer, conn, myPlayerIdx = -1, gameOver = false, isPaused = false;
+
+    let game = {
+        phase: "TIRAGE", pot: 21,
+        players: [{name: "Hôte", chips: 0, comboDice: [], comboName: "", tirage: 0}, {name: "Invité", chips: 0, comboDice: [], comboName: "", tirage: 0}],
+        activeP: 0, rollsDone: 0, rollsMax: 3, firstInPli: -1,
+        dice: [0,0,0], kept: [false, false, false], isRolling: false, verdictText: ""
+    };
+
+    // --- LE NOUVEAU CERVEAU DE CALCUL ---
+    function analyze(dice) {
+        if (!dice || dice[0] === 0) return { rank: -1, pts: 0, name: "" };
+        const d = [...dice].sort((a,b) => b-a);
+        const s = d.join('');
+        const valTotal = parseInt(s); // ex: 651
+
+        // 1. LE ROI
+        if (s === "421") return { rank: 1000000, pts: 10, name: "4-2-1", short: "421" };
+        // 2. LES AS ET BRELANS (Hiérarchie croisée)
+        if (s === "111") return { rank: 900000, pts: 7, name: "3 AS", short: "111" };
+        if (s === "116") return { rank: 800006, pts: 6, name: "2 AS - 6", short: "116" };
+        if (s === "666") return { rank: 800005, pts: 6, name: "BRELAN 6", short: "666" };
+        if (s === "115") return { rank: 800004, pts: 5, name: "2 AS - 5", short: "115" };
+        if (s === "555") return { rank: 800003, pts: 5, name: "BRELAN 5", short: "555" };
+        if (s === "114") return { rank: 800002, pts: 4, name: "2 AS - 4", short: "114" };
+        if (s === "444") return { rank: 800001, pts: 4, name: "BRELAN 4", short: "444" };
+        if (s === "113") return { rank: 800000, pts: 3, name: "2 AS - 3", short: "113" };
+        if (s === "333") return { rank: 799999, pts: 3, name: "BRELAN 3", short: "333" };
+        if (s === "112") return { rank: 799998, pts: 2, name: "2 AS - 2", short: "112" };
+        if (s === "222") return { rank: 799997, pts: 2, name: "BRELAN 2", short: "222" };
+        // 3. LES SUITES
+        if (s === "654") return { rank: 700004, pts: 2, name: "SUITE 6", short: "654" };
+        if (s === "543") return { rank: 700003, pts: 2, name: "SUITE 5", short: "543" };
+        if (s === "432") return { rank: 700002, pts: 2, name: "SUITE 4", short: "432" };
+        if (s === "321") return { rank: 700001, pts: 1, name: "SUITE 3", short: "321" };
+        // 4. LA NÉNETTE (Pénalité mais force la plus basse)
+        if (s === "221") return { rank: 0, pts: 2, name: "NÉNETTE", short: "221" };
+        // 5. LE RESTE (Lecture du nombre total)
+        return { rank: valTotal, pts: 1, name: d.join('-'), short: s };
+    }
+
+    function updateUI() {
+        if(game.phase === "DECHARGE" && !gameOver) {
+            if(game.players[0].chips === 0) triggerEnd(0);
+            else if(game.players[1].chips === 0) triggerEnd(1);
+        }
+        document.getElementById('pot').innerText = game.pot;
+        document.getElementById('phase-label').innerText = game.phase;
+        for(let i=1; i<=3; i++) document.getElementById(`led${i}`).style.background = (i <= (game.rollsMax - game.rollsDone)) ? "var(--win)" : "#333";
+        
+        for(let i=0; i<2; i++) {
+            const p = game.players[i], dCont = document.getElementById(`dice-p${i}`), iCont = document.getElementById(`info-p${i}`);
+            document.getElementById(`p${i}-label`).innerText = p.name;
+            document.getElementById(`p${i}-chips`).innerText = p.chips;
+            document.getElementById(`p${i}-ui`).className = (game.activeP === i && !gameOver) ? "p-box active" : "p-box";
+            dCont.innerHTML = ""; iCont.innerText = "";
+            if (game.phase === "TIRAGE") { if(p.tirage > 0) { dCont.appendChild(createMiniDie(p.tirage)); iCont.innerText = p.tirage; } }
+            else {
+                let dispD = (i === game.activeP && !game.isRolling) ? game.dice : p.comboDice;
+                let dispN = (i === game.activeP && !game.isRolling) ? (game.dice[0]!==0 ? analyze(game.dice).name : "") : p.comboName;
+                if(dispD && dispD[0] !== 0) { [...dispD].sort((a,b)=>b-a).forEach(v => dCont.appendChild(createMiniDie(v))); iCont.innerText = dispN; }
+            }
+        }
+        document.getElementById('rollBtn').disabled = (game.activeP !== myPlayerIdx || gameOver || isPaused || game.isRolling);
+        document.getElementById('stopBtn').disabled = (document.getElementById('rollBtn').disabled || game.rollsDone === 0 || game.phase === "TIRAGE");
+        vLine.innerText = isPaused ? game.verdictText : (game.activeP === myPlayerIdx ? "À TOI !" : "ATTENTE...");
+    }
+
+    function handleRollResult() {
+        if(game.phase === "TIRAGE") {
+            game.players[game.activeP].tirage = game.dice[0]; game.dice = [0,0,0];
+            if(game.players[0].tirage > 0 && game.players[1].tirage > 0) {
+                isPaused = true; const msg = `${game.players[0].name}:${game.players[0].tirage} vs ${game.players[1].name}:${game.players[1].tirage}`;
+                showOverlay(msg, 2000); sendData({type:'OVERLAY', msg:msg, dur:2000});
+                setTimeout(() => {
+                    if(game.players[0].tirage === game.players[1].tirage) { game.players[0].tirage = 0; game.players[1].tirage = 0; isPaused = false; finishTurn(); }
+                    else { game.activeP = (game.players[0].tirage < game.players[1].tirage) ? 0 : 1; game.phase = "CHARGE"; showOverlay(game.players[game.activeP].name+" COMMENCE", 2000); setTimeout(()=> {isPaused=false; finishTurn();}, 2000); }
+                }, 2000);
+            } else { game.activeP = 1 - game.activeP; finishTurn(); }
+        } else {
+            const res = analyze(game.dice);
+            // DETECTION NÉNETTE INSTANTANÉE
+            if(res.short === "221") {
+                applyPunishment(game.activeP);
+                showOverlay("NÉNETTE ! +2 PT", 1500);
+                sendData({type:'OVERLAY', msg: "NÉNETTE ! +2 PT", dur: 1500, flash: true});
+                document.body.classList.add('nenette-flash'); setTimeout(()=>document.body.classList.remove('nenette-flash'), 600);
+            }
+            if(res.short === "421") { triggerGoldFlash(); sendData({type:'OVERLAY', msg:"4-2-1 !!!", dur:2000, gold:true}); }
+            
+            game.rollsDone++;
+            if(game.rollsDone === game.rollsMax) stop(); else finishTurn();
+        }
+    }
+
+    function applyPunishment(pIdx) {
+        let oppIdx = 1 - pIdx;
+        if(game.phase === "CHARGE") {
+            let take = Math.min(game.pot, 2); game.pot -= take; game.players[pIdx].chips += take;
+        } else {
+            let take = Math.min(game.players[oppIdx].chips, 2);
+            game.players[oppIdx].chips -= take; game.players[pIdx].chips += take;
+        }
+    }
+
+    function stop() {
+        const res = analyze(game.dice);
+        game.players[game.activeP].comboDice = [...game.dice];
+        game.players[game.activeP].comboName = res.name;
+        game.dice = [0,0,0]; game.kept = [false,false,false];
+        if(game.firstInPli === -1) { game.firstInPli = game.activeP; game.rollsMax = game.rollsDone; game.activeP = 1-game.activeP; game.rollsDone = 0; }
+        else resolvePli();
+        finishTurn();
+    }
+
+    function resolvePli() {
+        isPaused = true;
+        const p0 = analyze(game.players[0].comboDice), p1 = analyze(game.players[1].comboDice);
+        let battleTxt = "", winMsg = "";
+        
+        if(p0.rank !== p1.rank) {
+            let wIdx = (p0.rank > p1.rank) ? 0 : 1, lIdx = 1 - wIdx, pts = (wIdx === 0 ? p0.pts : p1.pts);
+            battleTxt = `${p0.name} vs ${p1.name}`;
+            if(game.phase === "CHARGE") {
+                let t = Math.min(game.pot, pts); game.players[lIdx].chips += t; game.pot -= t;
+                winMsg = `${game.players[lIdx].name} prend ${t}`;
+                if(game.pot <= 0) game.phase = "DECHARGE";
+            } else {
+                let t = Math.min(game.players[wIdx].chips, pts);
+                game.players[wIdx].chips -= t; game.players[lIdx].chips += t;
+                winMsg = `${game.players[wIdx].name} donne ${t}`;
+            }
+            game.activeP = lIdx;
+        } else { game.activeP = game.firstInPli; battleTxt = "ÉGALITÉ !"; winMsg = "REMBET !"; }
+        
+        game.verdictText = battleTxt; showOverlay(winMsg, 3500);
+        sendData({type:'OVERLAY', msg: winMsg, dur:3500, verdict: battleTxt});
+        setTimeout(() => { isPaused = false; game.firstInPli = -1; game.rollsMax = 3; game.rollsDone = 0; game.players.forEach(p=>{p.comboDice=[];p.comboName=""}); finishTurn(); }, 3500);
+    }
+
+    // --- FONCTIONS SYNC ---
+    function startApp(mode) {
+        document.getElementById('start-menu').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'flex';
+        if(mode === 'host') {
+            game.players[0].name = document.getElementById('player-name').value || "Hôte";
+            peer = new Peer('421-' + Math.floor(Math.random()*999));
+            peer.on('open', id => { document.getElementById('my-code').innerText = id; });
+            peer.on('connection', c => { conn = c; myPlayerIdx = 0; setupSync(); });
+        } else {
+            game.players[1].name = document.getElementById('player-name').value || "Invité";
+            peer = new Peer();
+            peer.on('open', () => { conn = peer.connect(document.getElementById('join-id').value); myPlayerIdx = 1; setupSync(); });
+        }
+    }
+
+    function setupSync() {
+        conn.on('open', () => { sendData({type:'HELLO', name: game.players[myPlayerIdx].name}); updateUI(); });
+        conn.on('data', d => {
+            if(d.type === 'HELLO') { game.players[myPlayerIdx===0?1:0].name = d.name; updateUI(); }
+            if(d.type === 'SYNC') { game = d.game; updateUI(); draw(); }
+            if(d.type === 'ANIM') { game.kept = d.kept; runAnim(d.final, d.senderIdx); }
+            if(d.type === 'OVERLAY') { 
+                if(d.verdict) { game.verdictText = d.verdict; isPaused = true; }
+                showOverlay(d.msg, d.dur); 
+                if(d.flash) { document.body.classList.add('nenette-flash'); setTimeout(()=>document.body.classList.remove('nenette-flash'), 600); }
+                if(d.gold) triggerGoldFlash();
+                setTimeout(() => { isPaused = false; updateUI(); }, d.dur);
+            }
+        });
+    }
+
+    function roll() {
+        if(isPaused || game.isRolling) return;
+        let final = (game.phase === "TIRAGE") ? [Math.floor(Math.random()*6)+1] : [0,0,0];
+        if (game.phase !== "TIRAGE") { for(let i=0; i<3; i++) final[i] = (!game.kept[i] || game.dice[0] === 0) ? Math.floor(Math.random()*6)+1 : game.dice[i]; }
+        sendData({type:'ANIM', kept: [...game.kept], final: final, senderIdx: myPlayerIdx}); runAnim(final, myPlayerIdx);
+    }
+
+    function runAnim(finalValues, senderIdx) {
+        game.isRolling = true; let count = 0;
+        let anim = setInterval(() => {
+            if(game.phase === "TIRAGE") game.dice = [Math.floor(Math.random()*6)+1];
+            else { for(let i=0; i<3; i++) if(!game.kept[i]) game.dice[i] = Math.floor(Math.random()*6)+1; }
+            draw(); if(++count > 12) { clearInterval(anim); game.dice = finalValues; game.isRolling = false; if(senderIdx === myPlayerIdx) handleRollResult(); updateUI(); draw(); }
+        }, 50);
+    }
+
+    // --- DESSIN & UTILS ---
+    function draw() {
+        ctx.clearRect(0,0,500,200);
+        if (game.phase === "TIRAGE") { if (game.dice[0] > 0) drawDie(200, 50, 100, game.dice[0], false); }
+        else { for(let i=0; i<3; i++) if(game.dice[i] > 0) drawDie(35 + i * 155, 50, 95, game.dice[i], game.kept[i]); }
+    }
+    function drawDie(x, y, size, val, kept) {
+        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.roundRect(x,y,size,size,15); ctx.fill();
+        if(kept) { ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 5; ctx.stroke(); }
+        ctx.fillStyle = "#111"; const p = size/4, pts = {1:[[2,2]], 2:[[1,1],[3,3]], 3:[[1,1],[2,2],[3,3]], 4:[[1,1],[1,3],[3,1],[3,3]], 5:[[1,1],[1,3],[2,2],[3,1],[3,3]], 6:[[1,1],[1,2],[1,3],[3,1],[3,2],[3,3]]}[val];
+        pts.forEach(pt => { ctx.beginPath(); ctx.arc(x+pt[0]*p, y+pt[1]*p, size/12, 0, Math.PI*2); ctx.fill(); });
+    }
+    function createMiniDie(v) {
+        const d = document.createElement('div'); d.className = 'mini-die';
+        const dots = {1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}[v];
+        for(let i=0; i<9; i++) { const dot = document.createElement('div'); if(dots.includes(i)) dot.className='dot'; d.appendChild(dot); }
+        return d;
+    }
+    function sendData(d) { if(conn && conn.open) conn.send(d); }
+    function finishTurn() { sendData({type:'SYNC', game:game}); updateUI(); draw(); }
+    function showOverlay(t, d) { overlay.innerText = t; overlay.style.display = 'block'; setTimeout(()=>overlay.style.display='none', d); }
+    function triggerGoldFlash() { document.body.classList.add('gold-flash'); setTimeout(()=>document.body.classList.remove('gold-flash'), 800); }
+    function triggerEnd(w) { gameOver = true; alert("GAGNÉ : " + game.players[w].name); location.reload(); }
+
+    document.getElementById('rollBtn').onclick = roll;
+    document.getElementById('stopBtn').onclick = stop;
+    canvas.onpointerdown = e => {
+        if(game.isRolling || game.phase === "TIRAGE" || game.rollsDone === 0 || game.activeP !== myPlayerIdx) return;
+        const r = canvas.getBoundingClientRect(), x = (e.clientX - r.left) * (500 / r.width);
+        for(let i=0; i<3; i++) if(x > 35+i*155 && x < 130+i*155) game.kept[i] = !game.kept[i];
+        updateUI(); draw();
+    };
+</script>
+</body>
+</html>
